@@ -28,7 +28,7 @@ namespace ThunderPrint
         private static readonly PdfFont Font1 = PdfFontFactory.CreateFont(@"c:\Windows\Fonts\LTe50920_0.ttf", embedded: true);
         private static readonly PdfFont Font2 = PdfFontFactory.CreateFont(@"c:\Windows\Fonts\LTe50872_0.ttf", embedded: true);
 
-        private static readonly Color Color1 = new DeviceCmyk(0, 0, 0, 5);
+        private static readonly Color Color1 = new DeviceCmyk(0, 0, 0, 10);
         private static readonly Color Color2 = new DeviceCmyk(10, 0, 0, 0);
         private static readonly Color Color3 = new DeviceCmyk(0, 0, 0, 0);
 
@@ -142,6 +142,7 @@ namespace ThunderPrint
             }
 
             var allDays = new List<Occurrence>();
+            var today = DateTime.Now.Date;
 
             while (day.Month == month.Month)
             {
@@ -157,6 +158,9 @@ namespace ThunderPrint
                         .SetMarginLeft(-1).SetMarginTop(-2).SetBold())
                     .SetFont(Font1).SetFontSize(7)
                     .SetWidthPercent(100);
+
+                if (day < today)
+                    cell.SetNextRenderer(new StrikedCellRenderer(cell));
 
                 if (day.DayOfWeek == DayOfWeek.Saturday || day.DayOfWeek == DayOfWeek.Sunday)
                     cell.SetBackgroundColor(Color1);

@@ -50,6 +50,7 @@
     <Compile Include="ItemFlags.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="StrikedCellRenderer.cs" />
     <Compile Include="ThunderPrinter.cs" />
   </ItemGroup>
   <ItemGroup>
