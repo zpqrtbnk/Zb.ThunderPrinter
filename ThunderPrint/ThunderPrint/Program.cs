@@ -85,6 +85,11 @@ namespace ThunderPrint
             var month = DateTime.Now.Date;
             month = month.AddDays(1 - month.Day); // first day of this month
 
+            // we should get them all here, because otherwise it's going to be horribly slow?
+            // but then, multi-days stuff span over 1 occurence => need to deal w/it, we would
+            // need some kind of "navigator" - ok - fixme later
+            //var occurences = calendar.GetOccurrences(month, month.AddMonths(6));
+
             for (var i = 0; i < 6; i++)
             {
                 if (i > 0)
@@ -171,6 +176,27 @@ namespace ThunderPrint
                 ctable.StartNewRow();
 
                 var occurences = tp.GetDayOccurences(calendar, day).ToList();
+
+                /*
+                foreach (var o in occurences)
+                {
+                    var e = (Event) o.Source;
+                    if (!e.Name.StartsWith("Plong")) continue;
+                    Console.WriteLine("{0} {1}", e.Name, e.Summary);
+                    Console.WriteLine("  {0} - {1}", e.Start, e.End);
+                    Console.WriteLine("  ri: {0}", e.RecurrenceId);
+                    Console.WriteLine("  xd: {0}", e.ExceptionDates.Count);
+                    foreach (var ed in e.ExceptionDates)
+                    {
+                        Console.WriteLine("   -    {0}", ed.TzId);
+                        foreach (var p in ed)
+                        {
+                            Console.WriteLine("    -    {0} - {1}", p.StartTime, p.EndTime);
+                        }
+                    }
+                    Console.WriteLine("  xr: {0}", e.ExceptionRules.Count);
+                }
+                */
 
                 var allDays2 = new List<Occurrence>();
                 foreach (var occurrence in occurences) // gather today's all-day events

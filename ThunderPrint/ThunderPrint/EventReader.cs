@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
+using System.Globalization;
 using Ical.Net;
 using Ical.Net.DataTypes;
 using Ical.Net.General;
@@ -38,7 +39,8 @@ namespace ThunderPrint
             var flags = (ItemFlags)Convert.ToUInt32(_reader.GetInt64(6));
             var startTz = _reader.GetString(7);
             var endTz = _reader.GetString(8);
-            //var recurrenceId = _reader.GetValue(9);
+            var recurrenceId = _reader.IsDBNull(9) ? (long?) null : _reader.GetInt64(9);
+            var stamp = _reader.IsDBNull(10) ? (long?) null : _reader.GetInt64(10);
 
             start = ApplyTimeZone(start, startTz);
             end = ApplyTimeZone(end, endTz);
@@ -48,7 +50,9 @@ namespace ThunderPrint
                 DtStart = new CalDateTime(start),
                 DtEnd = new CalDateTime(end),
                 Name = title,
-                Uid = id
+                Uid = id,
+                DtStamp = stamp == null ? null : new CalDateTime(FromUnixTime(stamp.Value)),
+                RecurrenceId = recurrenceId == null ? null : new CalDateTime(FromUnixTime(recurrenceId.Value))
             };
 
             e.Properties.Add(new CalendarProperty("CALNAME", calendarName));
@@ -58,15 +62,23 @@ namespace ThunderPrint
             GetICalString(e);
 
             _readReady = false;
-            while (_reader.Read())
+            while (_reader.Read()) // read other iCal strings belonging to that event
             {
-                if (_reader.GetString(5) == id)
+                // soon as ids differ, or recurrentId != null, it's another event
+                if (_reader.GetString(5) == id && _reader.IsDBNull(9))
                 {
+                    // keep reading
                     GetICalString(e);
                 }
                 else
                 {
+                    // on to next event
                     _readReady = true;
+                    while (_readReady && _reader.IsDBNull(1))
+                    {
+                        Console.WriteLine("Got NULL title for event \"{0}\", skipping.", _reader.GetString(5));
+                        _readReady = _reader.Read();
+                    }
                     break;
                 }
             }
@@ -82,10 +94,11 @@ namespace ThunderPrint
 
             if (icalString.StartsWith("EXDATE:"))
             {
-                // fixme - test that this actually works
+                // for some reason, we need to round dates else iCal.NET ignores the exclusions
                 if (e.ExceptionDates == null)
                     e.ExceptionDates = new List<IPeriodList>();
-                var item = new PeriodList(icalString);
+                var dt = DateTime.ParseExact(icalString.Substring("EXDATE:".Length), "yyyyMMddTHHmmssK", CultureInfo.InvariantCulture).Date;
+                var item = new PeriodList { new Ical.Net.DataTypes.Period(new CalDateTime(dt)) };
                 e.ExceptionDates.Add(item);
             }
             else if (icalString.StartsWith("RRULE:"))
@@ -97,7 +110,7 @@ namespace ThunderPrint
                 }
                 catch
                 {
-                    Console.WriteLine("Failed to parse rule \"{0}\" for event \"{1}\", skipping.", icalString, e.Name);
+                    Console.WriteLine("Failed to parse rule \"{0}\" for event \"{1}\", skipping rule.", icalString, e.Name);
                     return;
                 }
 
@@ -105,9 +118,14 @@ namespace ThunderPrint
                     e.RecurrenceRules = new List<IRecurrencePattern>();
                 e.RecurrenceRules.Add(rule);
             }
+            else if (icalString.StartsWith("RDATE;"))
+            {
+                // fixme handle, or ?
+                Console.WriteLine("What shall we do with RDATE? for event \"{1}\", skipping rule.", icalString, e.Name);
+            }
             else
             {
-                Console.WriteLine("Unknown rule \"{0}\" for event \"{1}\", skipping.", icalString, e.Name);
+                Console.WriteLine("Unknown rule \"{0}\" for event \"{1}\", skipping rule.", icalString, e.Name);
             }
         }
 

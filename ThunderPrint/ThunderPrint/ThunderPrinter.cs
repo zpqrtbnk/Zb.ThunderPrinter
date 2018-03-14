@@ -48,17 +48,20 @@ namespace ThunderPrint
 
                 using (var cmd = conn.CreateCommand())
                 {
+                    // only join to recurrence when recurrence ID is null, else it's already a recurrence
+
                     cmd.CommandText = @"
-                        SELECT e.cal_id, e.title, e.event_start, e.event_end, r.icalString, e.id, e.flags, e.event_start_tz, e.event_end_tz, e.recurrence_id
+                        SELECT e.cal_id, e.title, e.event_start, e.event_end, r.icalString, e.id, e.flags, e.event_start_tz, e.event_end_tz, e.recurrence_id, e.event_stamp
                         FROM cal_events e
-                        LEFT OUTER JOIN cal_recurrence r ON e.id=r.item_id AND e.cal_id=r.cal_id
-                        ORDER BY e.id;";
+                        LEFT OUTER JOIN cal_recurrence r ON (e.id=r.item_id AND e.cal_id=r.cal_id AND e.recurrence_id IS NULL)
+                        ORDER BY e.id, e.recurrence_id, e.title;";
 
                     using (var reader = cmd.ExecuteReader())
                     {
                         var ereader = new EventReader(reader, calendars);
                         while (ereader.Read())
                         {
+                            //Console.WriteLine("READ: {0} {1}", reader.GetValue(1), reader.GetValue(4));
                             yield return ereader.GetEvent();
                         }
                     }
